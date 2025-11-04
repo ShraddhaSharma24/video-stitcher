@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: video-stitcher
+    env: docker
+    plan: free
+    autoDeploy: true
