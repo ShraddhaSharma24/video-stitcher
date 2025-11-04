@@ -8,8 +8,25 @@ class VideoStitcher:
         self.output_dir = output_dir
         Path(self.output_dir).mkdir(parents=True, exist_ok=True)
 
+    # ---------------- NEW: auto-expand folders into video file list --------------
+    def expand_paths(self, paths: List[str]) -> List[str]:
+        out = []
+        for p in paths:
+            if os.path.isdir(p):
+                for f in sorted(os.listdir(p)):
+                    if f.lower().endswith(('.mp4', '.mov', '.mkv', '.avi')):
+                        out.append(os.path.join(p, f))
+            else:
+                out.append(p)
+        return out
+    # -----------------------------------------------------------------------------
+
     def stitch_videos_ffmpeg(self, video_paths: List[str], output_path: str,
                              method: str = "concat") -> str:
+
+        # NEW: auto expand folder paths to file list
+        video_paths = self.expand_paths(video_paths)
+
         if not video_paths:
             raise ValueError("No video paths provided")
 
@@ -27,6 +44,7 @@ class VideoStitcher:
 
         cmd = ['ffmpeg', '-f', 'concat', '-safe', '0', '-i', concat_file,
                '-c', 'copy', '-y', output_path]
+
         subprocess.run(cmd, capture_output=True, text=True, check=True)
         return output_path
 
@@ -41,6 +59,8 @@ class VideoStitcher:
         cmd = ['ffmpeg', *inputs, '-filter_complex', filter_complex,
                '-map', '[outv]', '-map', '[outa]',
                '-c:v', 'libx264', '-c:a', 'aac', '-y', output_path]
+
         subprocess.run(cmd, capture_output=True, text=True, check=True)
         return output_path
+
 
