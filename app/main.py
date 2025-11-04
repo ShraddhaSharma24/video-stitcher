@@ -25,24 +25,44 @@ async def health():
         return {"status": "ok", "ffmpeg": False}
 
 @app.post("/stitch")
-async def stitch_videos(files: List[UploadFile] = File(...), method: str = "concat"):
-    if len(files) < 2:
+async def stitch_videos(videos: List[UploadFile] = File(...), method: str = "concat"):
+    if len(videos) < 2:
         raise HTTPException(status_code=400, detail="Minimum 2 videos needed")
 
     temp_dir = tempfile.mkdtemp()
     video_paths = []
     try:
-        for i, file in enumerate(files):
-            file_path = os.path.join(temp_dir, f"video_{i}.mp4")
+        for i, file in enumerate(videos):
+            # validate extensions
+            if not file.filename.lower().endswith(('.mp4', '.avi', '.mov', '.mkv', '.webm')):
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Invalid file type: {file.filename}"
+                )
+
+            # preserve original name
+            file_path = os.path.join(temp_dir, f"{i:03d}_{file.filename}")
             with open(file_path, "wb") as f:
                 f.write(await file.read())
             video_paths.append(file_path)
 
-        output_path = os.path.join(stitcher.output_dir, "stitched.mp4")
+        output_filename = "stitched_output.mp4"
+        output_path = os.path.join(stitcher.output_dir, output_filename)
 
-        result = stitcher.stitch_videos_ffmpeg(video_paths, output_path, method)
-        return FileResponse(result, media_type="video/mp4")
+        stitched_result = stitcher.stitch_videos_ffmpeg(video_paths, output_path, method)
+
+        return FileResponse(
+            stitched_result,
+            media_type="video/mp4",
+            filename=output_filename,
+            headers={"X-Video-Count": str(len(videos))}
+        )
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
     finally:
         shutil.rmtree(temp_dir, ignore_errors=True)
+
+
 
