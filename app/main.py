@@ -24,8 +24,13 @@ async def health():
     except:
         return {"status": "ok", "ffmpeg": False}
 
-@app.post("/stitch")
-async def stitch_videos(videos: List[UploadFile] = File(...), method: str = "concat"):
+# IMPORTANT CHANGE: media_type now "multipart/form-data" so Swagger shows multi-upload with "+ Add"
+@app.post("/stitch", media_type="multipart/form-data")
+async def stitch_videos(
+    videos: List[UploadFile] = File(..., description="Upload 2+ videos (multi-select)"),
+    method: str = "concat"
+):
+    # now fastapi will allow multiple selection
     if len(videos) < 2:
         raise HTTPException(status_code=400, detail="Minimum 2 videos needed")
 
@@ -33,14 +38,13 @@ async def stitch_videos(videos: List[UploadFile] = File(...), method: str = "con
     video_paths = []
     try:
         for i, file in enumerate(videos):
-            # validate extensions
             if not file.filename.lower().endswith(('.mp4', '.avi', '.mov', '.mkv', '.webm')):
                 raise HTTPException(
                     status_code=400,
                     detail=f"Invalid file type: {file.filename}"
                 )
 
-            # preserve original name
+            # save files
             file_path = os.path.join(temp_dir, f"{i:03d}_{file.filename}")
             with open(file_path, "wb") as f:
                 f.write(await file.read())
@@ -55,7 +59,6 @@ async def stitch_videos(videos: List[UploadFile] = File(...), method: str = "con
             stitched_result,
             media_type="video/mp4",
             filename=output_filename,
-            headers={"X-Video-Count": str(len(videos))}
         )
 
     except Exception as e:
@@ -63,6 +66,5 @@ async def stitch_videos(videos: List[UploadFile] = File(...), method: str = "con
 
     finally:
         shutil.rmtree(temp_dir, ignore_errors=True)
-
 
 
