@@ -8,27 +8,11 @@ class VideoStitcher:
         self.output_dir = output_dir
         Path(self.output_dir).mkdir(parents=True, exist_ok=True)
 
-    # ---------------- NEW: auto-expand folders into video file list --------------
-    def expand_paths(self, paths: List[str]) -> List[str]:
-        out = []
-        for p in paths:
-            if os.path.isdir(p):
-                for f in sorted(os.listdir(p)):
-                    if f.lower().endswith(('.mp4', '.mov', '.mkv', '.avi')):
-                        out.append(os.path.join(p, f))
-            else:
-                out.append(p)
-        return out
-    # -----------------------------------------------------------------------------
-
     def stitch_videos_ffmpeg(self, video_paths: List[str], output_path: str,
                              method: str = "concat") -> str:
 
-        # NEW: auto expand folder paths to file list
-        video_paths = self.expand_paths(video_paths)
-
-        if not video_paths:
-            raise ValueError("No video paths provided")
+        if len(video_paths) < 2:
+            raise ValueError("Minimum 2 videos required")
 
         if method == "concat":
             return self._concat_demuxer(video_paths, output_path)
@@ -42,9 +26,10 @@ class VideoStitcher:
                 abs_path = os.path.abspath(video_path)
                 f.write(f"file '{abs_path}'\n")
 
-        cmd = ['ffmpeg', '-f', 'concat', '-safe', '0', '-i', concat_file,
-               '-c', 'copy', '-y', output_path]
-
+        cmd = [
+            'ffmpeg', '-f', 'concat', '-safe', '0', '-i', concat_file,
+            '-c', 'copy', '-y', output_path
+        ]
         subprocess.run(cmd, capture_output=True, text=True, check=True)
         return output_path
 
@@ -56,11 +41,13 @@ class VideoStitcher:
             filter_parts.append(f'[{i}:v][{i}:a]')
         filter_complex = f"{''.join(filter_parts)}concat=n={len(video_paths)}:v=1:a=1[outv][outa]"
 
-        cmd = ['ffmpeg', *inputs, '-filter_complex', filter_complex,
-               '-map', '[outv]', '-map', '[outa]',
-               '-c:v', 'libx264', '-c:a', 'aac', '-y', output_path]
-
+        cmd = [
+            'ffmpeg', *inputs, '-filter_complex', filter_complex,
+            '-map', '[outv]', '-map', '[outa]',
+            '-c:v', 'libx264', '-c:a', 'aac', '-y', output_path
+        ]
         subprocess.run(cmd, capture_output=True, text=True, check=True)
         return output_path
+
 
 
