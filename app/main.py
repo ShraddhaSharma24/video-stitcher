@@ -26,7 +26,7 @@ async def health():
 
 @app.post("/stitch")
 async def stitch_videos(
-    videos: List[UploadFile] = File(..., description="Upload 2+ videos (use multi-select)"),
+    videos: List[UploadFile] = File(..., description="Upload 2+ videos (multi-select)"),
     method: str = "concat"
 ):
     if len(videos) < 2:
@@ -34,13 +34,11 @@ async def stitch_videos(
 
     temp_dir = tempfile.mkdtemp()
     video_paths = []
+
     try:
         for i, file in enumerate(videos):
             if not file.filename.lower().endswith(('.mp4', '.avi', '.mov', '.mkv', '.webm')):
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Invalid file type: {file.filename}"
-                )
+                raise HTTPException(status_code=400, detail=f"Invalid file type: {file.filename}")
 
             file_path = os.path.join(temp_dir, f"{i:03d}_{file.filename}")
             with open(file_path, "wb") as f:
@@ -50,12 +48,14 @@ async def stitch_videos(
         output_filename = "stitched_output.mp4"
         output_path = os.path.join(stitcher.output_dir, output_filename)
 
-        stitched_result = stitcher.stitch_videos_ffmpeg(video_paths, output_path, method)
+        stitched_result = stitcher.stitch_videos_ffmpeg(
+            video_paths, output_path, method
+        )
 
         return FileResponse(
             stitched_result,
             media_type="video/mp4",
-            filename=output_filename,
+            filename=output_filename
         )
 
     except Exception as e:
@@ -65,8 +65,6 @@ async def stitch_videos(
         shutil.rmtree(temp_dir, ignore_errors=True)
 
 
-    finally:
-        shutil.rmtree(temp_dir, ignore_errors=True)
 
 
 
