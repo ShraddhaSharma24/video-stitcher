@@ -27,7 +27,7 @@ async def health():
 # ↓ IMPORTANT: no "..." required marker, this makes swagger show (+ Add) button
 @app.post("/stitch")
 async def stitch_videos(
-    videos: List[UploadFile] = File(..., description="Upload 2+ videos (Add 2 or more files)"),
+    videos: List[UploadFile] = File(),
     method: str = "concat"
 ):
 
@@ -66,6 +66,7 @@ async def stitch_videos(
 
     finally:
         shutil.rmtree(temp_dir, ignore_errors=True)
+
 
 
 
